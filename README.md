@@ -1,95 +1,126 @@
+# NFT Marketplace Demo 
+[![Buildable](https://assets.buildable.dev/buildable-logos/powered-by-buildable.svg)](https://buildable.dev)
+
+This is a basic Next.js app for listing NFTs in a given contract address. The purpose of this repository is to showcase the simplicity of creating your backend endpoints in Buildable and hooking them up to frontend apps.
+
+This application receives data from the [Moralis API](https://moralis.io/), powered by a single [Buildable Flow](https://docs.buildable.dev/core-products/flows).
 
 
-# NftMarketplace
+## Check it out!
 
-This project was generated using [Nx](https://nx.dev).
+Live Demo: https://eloquent-khapse-9ee837.netlify.app/
 
-<p style="text-align: center;"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="450"></p>
+## Usage
 
-🔎 **Smart, Fast and Extensible Build System**
+To run this app, simply clone this repository and run:
 
-## Adding capabilities to your workspace
+```bash
+> yarn install
+> yarn start
+```
 
-Nx supports many plugins which add capabilities for developing different types of applications and different tools.
+## The backend ⚡️
 
-These capabilities include generating applications, libraries, etc as well as the devtools to test, and build projects as well.
+This application is linked to an existing Buildable Flow that gets NFT metadata using the Moralis API. The Flow is comprised of a single Node that contains the following code:
 
-Below are our core plugins:
+### Input
 
-- [React](https://reactjs.org)
-  - `npm install --save-dev @nrwl/react`
-- Web (no framework frontends)
-  - `npm install --save-dev @nrwl/web`
-- [Angular](https://angular.io)
-  - `npm install --save-dev @nrwl/angular`
-- [Nest](https://nestjs.com)
-  - `npm install --save-dev @nrwl/nest`
-- [Express](https://expressjs.com)
-  - `npm install --save-dev @nrwl/express`
-- [Node](https://nodejs.org)
-  - `npm install --save-dev @nrwl/node`
+```javascript
+const nodeInput = ({ $trigger, $nodes }) => {
+  const { 
+    chain = "ETH",
+    address = "0xed5af388653567af2f388e6224dc7c4b3241c544",
+    pageSize = 12,
+    cursor
+  } = $trigger.body;
 
-There are also many [community plugins](https://nx.dev/community) you could add.
+  return {
+    method: "GET",
+    url: `https://deep-index.moralis.io/api/v2/nft/${address}`,
+    params: {
+      chain,
+      address,
+      limit: pageSize,
+      cursor
+    },
+    responseType: "json",
+    headers: {
+      "Content-type": "application/json",
+      "X-API-Key": $trigger.env.MORALIS_API_KEY
+    }
+  };
+};
+```
 
-## Generate an application
+### Run
 
-Run `nx g @nrwl/react:app my-app` to generate an application.
+```javascript
+const axios = require("axios");
+const moment = require("moment");
 
-> You can use any of the plugins above to generate applications as well.
+const getRows = (result) => {
+  return result?.map(token => {
+    const metadata = JSON.parse(token.metadata);
 
-When using Nx, you can create multiple applications and libraries in the same workspace.
+    return {
+      collection: token.name,
+      name: metadata?.name,
+      image: metadata?.image.replace("ipfs://", "https://ipfs.io/ipfs/"),
+      contractType: token.contract_type,
+      lastSynced: moment(token.synced_at).fromNow()
+    };
+  });
+}
 
-## Generate a library
+/**
+ * The Node's executable function
+ *
+ * @param {Run} input - Data passed to your Node from the input function
+ */
+const run = async (input) => {
+  verifyInput(input);
 
-Run `nx g @nrwl/react:lib my-lib` to generate a library.
+  try {
+    const { data } = await axios(input);
 
-> You can also use any of the plugins above to generate libraries as well.
+    const rows = getRows(data.result);
 
-Libraries are shareable across libraries and applications. They can be imported from `@nft-marketplace/mylib`.
+    return {
+      rows,
+      page: data.page,
+      pageSize: data.page_size,
+      total: data.total,
+      cursor: data.cursor
+    };
+  } catch (error) {
+    return {
+      failed: true,
+      message: error.message,
+      data: {
+        ...error?.response?.data,
+      },
+    };
+  }
+};
 
-## Development server
+/**
+ * Verifies the input parameters
+ */
+const verifyInput = ({ method, url }) => {
+  const ERRORS = {
+    INVALID_METHOD: "A valid method field (string) must be provided",
+    INVALID_URL: "A valid url field (string) must be provided",
+  };
 
-Run `nx serve my-app` for a dev server. Navigate to http://localhost:4200/. The app will automatically reload if you change any of the source files.
-
-## Code scaffolding
-
-Run `nx g @nrwl/react:component my-component --project=my-app` to generate a new component.
-
-## Build
-
-Run `nx build my-app` to build the project. The build artifacts will be stored in the `dist/` directory. Use the `--prod` flag for a production build.
-
-## Running unit tests
-
-Run `nx test my-app` to execute the unit tests via [Jest](https://jestjs.io).
-
-Run `nx affected:test` to execute the unit tests affected by a change.
-
-## Running end-to-end tests
-
-Run `nx e2e my-app` to execute the end-to-end tests via [Cypress](https://www.cypress.io).
-
-Run `nx affected:e2e` to execute the end-to-end tests affected by a change.
-
-## Understand your workspace
-
-Run `nx graph` to see a diagram of the dependencies of your projects.
-
-## Further help
-
-Visit the [Nx Documentation](https://nx.dev) to learn more.
-
+  if (typeof method !== "string") throw new Error(ERRORS.INVALID_METHOD);
+  if (typeof url !== "string") throw new Error(ERRORS.INVALID_URL);
+};
+```
 
 
-## ☁ Nx Cloud
+Head over to Buildable and [create an account](https://welcome.buildable.dev/) to get started with building your next backend!
 
-### Distributed Computation Caching & Distributed Task Execution
 
-<p style="text-align: center;"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-cloud-card.png"></p>
+### License
 
-Nx Cloud pairs with Nx in order to enable you to build and test code more rapidly, by up to 10 times. Even teams that are new to Nx can connect to Nx Cloud and start saving time instantly.
-
-Teams using Nx gain the advantage of building full-stack applications with their preferred framework alongside Nx’s advanced code generation and project dependency graph, plus a unified experience for both frontend and backend developers.
-
-Visit [Nx Cloud](https://nx.app/) to learn more.
-# nft-marketplace-private
+© 2022, Buildable Technologies Inc. - Released under the MIT License
