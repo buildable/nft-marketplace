@@ -10,6 +10,8 @@ This application receives data from the [Moralis API](https://moralis.io/), powe
 
 Live Demo: https://eloquent-khapse-9ee837.netlify.app/
 
+Tutorial Video: https://www.youtube.com/watch?v=Yw0cYLn5dbE
+
 ## Usage
 
 To run this app, simply clone this repository and run:
